@@ -3,13 +3,44 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="File Manager" Height="450" Width="800">
     <Grid>
+        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="200"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <TreeView x:Name="FolderTreeView" Grid.Column="0"/>
-        <ListView x:Name="FileListView" Grid.Column="1">
+        <!-- Панель с кнопками -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
+            <Button Content="⟵" Click="ButtonBack_Click" Margin="0,0,5,0" Width="30" Height="30"/>
+            <Button Content="⟶" Click="ButtonForward_Click" Width="30" Height="30" Margin="0,0,5,0"/>
+            <Button Content="Создать файл" Click="CreateFile_Click" Width="100" Height="30"/>
+        </StackPanel>
+
+        <!-- Путь -->
+        <TextBlock Text="Путь:" Grid.Row="1" Grid.Column="0" Margin="5,5,0,5" VerticalAlignment="Center"/>
+        <TextBox x:Name="PathTextBox" Grid.Row="1" Grid.Column="1" 
+                 IsReadOnly="True" 
+                 Margin="5"
+                 Background="#F0F0F0"
+                 Padding="5"/>
+
+        <!-- Текущий файл -->
+        <TextBlock Text="Текущий файл:" Grid.Row="2" Grid.Column="0" Margin="5,5,0,5" VerticalAlignment="Center"/>
+        <TextBox x:Name="CurrentFileTextBox" Grid.Row="2" Grid.Column="1" 
+                 IsReadOnly="True" 
+                 Margin="5"
+                 Background="#F0F0F0"
+                 Padding="5"/>
+
+        <!-- Основной контент -->
+        <TreeView x:Name="FolderTreeView" Grid.Row="3" Grid.Column="0"/>
+        <ListView x:Name="FileListView" Grid.Row="3" Grid.Column="1">
             <ListView.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Открыть" Click="OpenItem_Click"/>
