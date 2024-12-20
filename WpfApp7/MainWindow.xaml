@@ -91,7 +91,12 @@
         <TreeView x:Name="FolderTreeView" Grid.Row="3" Grid.Column="0" 
                   SelectedItemChanged="FolderTreeView_SelectedItemChanged">
         </TreeView>
-        <ListView x:Name="FileListView" Grid.Row="3" Grid.Column="1" MouseDoubleClick="FileListView_MouseDoubleClick" SelectionMode="Single">
+        <ListView x:Name="FileListView" 
+                  Grid.Row="3" 
+                  Grid.Column="1" 
+                  MouseDoubleClick="FileListView_MouseDoubleClick" 
+                  SelectionMode="Single"
+                  KeyDown="FileListView_KeyDown">
             <ListView.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Открыть" Click="OpenItem_Click"/>
