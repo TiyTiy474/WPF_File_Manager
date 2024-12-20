@@ -21,7 +21,6 @@ using System.Collections.Generic;
 //TODO: Добавить поддержку вкладок как в Windows 11
 //TODO: Добавить строку для отображения текущего пути
 //TODO: Создать не существующее пространство и организовать с ним работу 
-
 namespace WpfApp7
 {
     public partial class MainWindow : Window
@@ -34,178 +33,10 @@ namespace WpfApp7
         public MainWindow()
         {
             InitializeComponent();
-            InitializeFileManager();
-            InitializeTabSystem();
-        }
-
-        private void InitializeTabSystem()
-        {
-            _tabControl = new TabControl();
-            _tabs = new List<TabItem>();
-
-            var newTabButton = new Button
-            {
-                Content = "+",
-                Width = 25,
-                Height = 25,
-                Margin = new Thickness(5)
-            };
-            newTabButton.Click += (s, e) => AddNewTab();
-
-            var mainGrid = new Grid();
-            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            mainGrid.RowDefinitions.Add(new RowDefinition());
-
-            var topPanel = new DockPanel();
-            topPanel.Children.Add(_tabControl);
-            topPanel.Children.Add(newTabButton);
-            DockPanel.SetDock(newTabButton, Dock.Right);
-
-            Grid.SetRow(topPanel, 0);
-
-            mainGrid.Children.Add(topPanel);
-
-            this.Content = mainGrid;
-
-            AddNewTab();
-        }
-
-        private void AddNewTab()
-        {
-            var newTab = new TabItem();
-            var headerPanel = new DockPanel();
-
-            var headerText = new TextBlock
-            {
-                Text = $"Вкладка {_tabs.Count + 1}",
-                Margin = new Thickness(0, 0, 5, 0)
-            };
-
-            var closeButton = new Button
-            {
-                Content = "×",
-                Background = null,
-                BorderThickness = new Thickness(0),
-                Padding = new Thickness(5, 0, 5, 0),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-
-            headerPanel.Children.Add(headerText);
-            headerPanel.Children.Add(closeButton);
-            newTab.Header = headerPanel;
-
-            var fileManagerGrid = new Grid();
-            fileManagerGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            fileManagerGrid.RowDefinitions.Add(new RowDefinition());
-
-            var pathBox = new TextBox
-            {
-                Margin = new Thickness(5),
-                IsReadOnly = true
-            };
-            Grid.SetRow(pathBox, 0);
-
-            var contentGrid = new Grid();
-            Grid.SetRow(contentGrid, 1);
-
-            var treeView = new TreeView
-            {
-                Width = 200,
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-
-            var listView = new ListView();
-
-            contentGrid.Children.Add(treeView);
-            contentGrid.Children.Add(listView);
-
-            fileManagerGrid.Children.Add(pathBox);
-            fileManagerGrid.Children.Add(contentGrid);
-
-            newTab.Content = fileManagerGrid;
-
-            InitializeFileManagerForTab(treeView, listView, pathBox);
-
-            closeButton.Click += (s, e) =>
-            {
-                if (_tabs.Count > 1)
-                {
-                    _tabs.Remove(newTab);
-                    _tabControl.Items.Remove(newTab);
-                }
-            };
-
-            _tabs.Add(newTab);
-            _tabControl.Items.Add(newTab);
-            _tabControl.SelectedItem = newTab;
-        }
-
-        private void InitializeFileManager()
-        {
             _files = new ObservableCollection<FileSystemInfo>();
             FileListView.ItemsSource = _files;
-
-            foreach (var drive in DriveInfo.GetDrives())
-            {
-                if (drive.IsReady)
-                {
-                    var item = new TreeViewItem
-                    {
-                        Header = drive.Name,
-                        Tag = drive.RootDirectory
-                    };
-                    FolderTreeView.Items.Add(item);
-                }
-            }
-
-            FolderTreeView.SelectedItemChanged += (s, e) =>
-            {
-                var item = FolderTreeView.SelectedItem as TreeViewItem;
-                if (item?.Tag is DirectoryInfo dir)
-                {
-                    _currentPath = dir.FullName;
-                    LoadFiles(_currentPath);
-                }
-            };
-
-            FileListView.MouseDoubleClick += (s, e) => { OpenSelectedItem(); };
-        }
-
-        private void InitializeFileManagerForTab(TreeView treeView, ListView listView, TextBox pathBox)
-        {
-            try
-            {
-                foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady))
-                {
-                    var item = new TreeViewItem
-                    {
-                        Header = drive.Name,
-                        Tag = drive.RootDirectory
-                    };
-                    treeView.Items.Add(item);
-                }
-
-                treeView.SelectedItemChanged += (s, e) =>
-                {
-                    try
-                    {
-                        var item = e.NewValue as TreeViewItem;
-                        if (item?.Tag is DirectoryInfo dir)
-                        {
-                            pathBox.Text = dir.FullName;
-                            LoadFilesForTab(listView, dir.FullName);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Ошибка при загрузке директории: {ex.Message}");
-                    }
-                };
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при инициализации: {ex.Message}");
-            }
+            LoadFolderTreeView();
+            LoadFiles(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)); // Начальная директория
         }
 
         private void OpenSelectedItem()
@@ -222,7 +53,8 @@ namespace WpfApp7
                     return;
                 }
 
-                CurrentFileTextBox.Text = selected.FullName; // Показываем полный путь к файлу
+                PathTextBox.Text = Path.GetDirectoryName(selected.FullName); // Показываем путь к директории
+                CurrentFileTextBox.Text = selected.Name; // Показываем только имя файла
 
                 if (selected is DirectoryInfo)
                 {
@@ -244,14 +76,13 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при открытии: {ex.Message}");
             }
         }
-
         private void LoadFiles(string path, bool addToHistory = true)
         {
             try
             {
                 _currentPath = path;
                 PathTextBox.Text = path;
-                CurrentFileTextBox.Clear(); // Очищаем поле текущего файла
+                CurrentFileTextBox.Clear();
                 _files.Clear();
 
                 var dir = new DirectoryInfo(path);
@@ -261,7 +92,6 @@ namespace WpfApp7
                     return;
                 }
 
-                // Добавляем переход на уровень выше, если это не корневая директория
                 var parentDir = dir.Parent;
                 if (parentDir != null)
                 {
@@ -281,24 +111,18 @@ namespace WpfApp7
                 if (addToHistory)
                 {
                     _back.Push(path);
-                    _forward.Clear(); // Очищаем историю вперед при новой навигации
+                    _forward.Clear();
                 }
             }
             catch (UnauthorizedAccessException)
             {
                 MessageBox.Show("Отказано в доступе к директории");
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при загрузке файлов: {ex.Message}");
-            }
         }
-
         private void OpenItem_Click(object sender, RoutedEventArgs e)
         {
             OpenSelectedItem();
         }
-        
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -335,7 +159,6 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при удалении: {ex.Message}");
             }
         }
-        
         private void CreateFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new InputDialog("Введите имя папки");
@@ -346,6 +169,11 @@ namespace WpfApp7
                     var path = Path.Combine(_currentPath, dialog.ResponseText);
                     Directory.CreateDirectory(path);
                     LoadFiles(_currentPath);
+                    if (string.IsNullOrWhiteSpace(dialog.ResponseText))
+                    {
+                        MessageBox.Show("Имя не может быть пустым.");
+                        return;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -353,9 +181,9 @@ namespace WpfApp7
                 }
             }
         }
-
         private void CreateFile_Click(object sender, RoutedEventArgs e)
         {
+
             var dialog = new InputDialog("Введите имя файла с расширением (например: text.txt, doc.docx)");
             if (dialog.ShowDialog() == true)
             {
@@ -363,6 +191,12 @@ namespace WpfApp7
                 {
                     var fileName = dialog.ResponseText;
                     // Проверяем, содержит ли имя файла расширение
+                    if (string.IsNullOrWhiteSpace(dialog.ResponseText))
+                    {
+                        MessageBox.Show("Имя не может быть пустым.");
+                        return;
+                    }
+
                     if (!fileName.Contains("."))
                     {
                         MessageBox.Show("Пожалуйста, укажите расширение файла (например: .txt, .docx, .pdf)");
@@ -373,8 +207,7 @@ namespace WpfApp7
                     if (!File.Exists(path))
                     {
                         using (File.Create(path))
-                        {
-                        } // Создаем файл и сразу закрываем поток
+                        { } // Создаем файл и сразу закрываем поток
 
                         LoadFiles(_currentPath);
                         //Открываем созданный файл 
@@ -396,7 +229,6 @@ namespace WpfApp7
                 }
             }
         }
-
         private void NavigateBack()
         {
             if (_back.Count > 0)
@@ -406,7 +238,6 @@ namespace WpfApp7
                 LoadFiles(previousPath, false);
             }
         }
-
         private void NavigateForward()
         {
             if (_forward.Count > 0)
@@ -416,15 +247,94 @@ namespace WpfApp7
                 LoadFiles(nextPath, false);
             }
         }
-
         private void ButtonBack_Click(object sender, RoutedEventArgs e)
         {
             NavigateBack();
         }
-
         private void ButtonForward_Click(object sender, RoutedEventArgs e)
         {
             NavigateForward();
+        }
+        private void LoadFolderTreeView()
+        {
+            FolderTreeView.Items.Clear();
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    if (drive.IsReady)
+                    {
+                        var driveItem = new TreeViewItem
+                        {
+                            Header = $"{drive.Name} ({drive.VolumeLabel})",
+                            Tag = drive.RootDirectory
+                        };
+
+                        driveItem.Items.Add(new TreeViewItem()); // Placeholder для "+"
+                        driveItem.Expanded += FolderTreeView_Expanded;
+                        FolderTreeView.Items.Add(driveItem);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при загрузке диска {drive.Name}: {ex.Message}");
+                }
+            }
+        }
+        private void FolderTreeView_Expanded(object sender, RoutedEventArgs e)
+        {
+            var item = e.Source as TreeViewItem;
+            if (item?.Tag is DirectoryInfo dir)
+            {
+                e.Handled = true;
+                item.Items.Clear();
+                try
+                {
+                    foreach (var subDir in dir.GetDirectories())
+                    {
+                        try
+                        {
+                            var subItem = new TreeViewItem
+                            {
+                                Header = subDir.Name,
+                                Tag = subDir
+                            };
+                            subItem.Items.Add(new TreeViewItem()); // Placeholder
+                            subItem.Expanded += FolderTreeView_Expanded;
+                            item.Items.Add(subItem);
+                        }
+                        catch
+                        {
+                        } // Пропускаем недоступные папки
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    MessageBox.Show("Отказано в доступе к директории");
+                }
+            }
+        }
+
+        private void FolderTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue is TreeViewItem item && item.Tag is DirectoryInfo dir)
+            {
+                try
+                {
+                    LoadFiles(dir.FullName);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при загрузке директории: {ex.Message}");
+                }
+            }
+        }
+        private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                OpenSelectedItem();
+            }
         }
     }
 }

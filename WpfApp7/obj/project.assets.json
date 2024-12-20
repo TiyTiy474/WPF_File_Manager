@@ -13,11 +13,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\purpl\\RiderProjects\\WpfApp7\\WpfApp7\\WpfApp7.csproj",
+      "projectUniqueName": "C:\\Users\\purpl\\RiderProjects\\WPF_File_Manager\\WpfApp7\\WpfApp7.csproj",
       "projectName": "WpfApp7",
-      "projectPath": "C:\\Users\\purpl\\RiderProjects\\WpfApp7\\WpfApp7\\WpfApp7.csproj",
+      "projectPath": "C:\\Users\\purpl\\RiderProjects\\WPF_File_Manager\\WpfApp7\\WpfApp7.csproj",
       "packagesPath": "C:\\Users\\purpl\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\purpl\\RiderProjects\\WpfApp7\\WpfApp7\\obj\\",
+      "outputPath": "C:\\Users\\purpl\\RiderProjects\\WPF_File_Manager\\WpfApp7\\obj\\",
       "projectStyle": "PackageReference",
       "UsingMicrosoftNETSdk": false,
       "configFilePaths": [
