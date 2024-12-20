@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Windows.Controls.Primitives;
 using System.Collections.Generic;
 using Microsoft.VisualBasic.FileIO; //это для FileSystem
+
 //TODO: Реализовать файловый менеджер
 //TODO: Добавить кнопку для работы с дисками
 //TODO: Реализовать открытие по двойному щелчку
@@ -26,6 +27,7 @@ using Microsoft.VisualBasic.FileIO; //это для FileSystem
 //TODO: Контекстное меню для папки и файла для файлов и папок то есть: удаление, копирование, вырезание, вставка, открыть в терминале, переименовать  
 //TODO: СДЕЛАТЬ ЕБУЧЕЕ КОЛЕСИКО
 //TODO: сделать удаление в корзину без подтверждения и безвозратное с подтверждением
+
 namespace WpfApp7
 {
     public partial class MainWindow : Window
@@ -37,6 +39,9 @@ namespace WpfApp7
         private string _clipboardPath;
         private bool _isCut;
 
+        /// <summary>
+        /// Конструктор класса MainWindow. Инициализирует компоненты и загружает начальные данные.
+        /// </summary>
         public MainWindow()
         {
             InitializeComponent();
@@ -46,6 +51,10 @@ namespace WpfApp7
             LoadFiles(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)); // Начальная директория
             FileListView.ContextMenu = CreateContextMenu();
         }
+
+        /// <summary>
+        /// Открывает выбранный файл или директорию. Если это файл, он запускается, если директория - загружается её содержимое.
+        /// </summary>
         private void OpenSelectedItem()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -83,6 +92,12 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при открытии: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Загружает файлы и директории из указанного пути и обновляет интерфейс.
+        /// </summary>
+        /// <param name="path">Путь к директории для загрузки.</param>
+        /// <param name="addToHistory">Флаг, указывающий, нужно ли добавлять путь в историю навигации.</param>
         private void LoadFiles(string path, bool addToHistory = true)
         {
             try
@@ -126,10 +141,18 @@ namespace WpfApp7
                 MessageBox.Show("Отказано в доступе к директории");
             }
         }
+
+        /// <summary>
+        /// Обработчик события нажатия на элемент "Открыть" в контекстном меню.
+        /// </summary>
         private void OpenItem_Click(object sender, RoutedEventArgs e)
         {
             OpenSelectedItem();
         }
+
+        /// <summary>
+        /// Удаляет выбранный файл или директорию после подтверждения пользователя.
+        /// </summary>
         private void DeleteItem_Click(object sender, RoutedEventArgs e)
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -166,6 +189,10 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при удалении: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Создает новую папку в текущей директории после ввода имени пользователем.
+        /// </summary>
         private void CreateFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new InputDialog("Введите имя папки");
@@ -188,9 +215,12 @@ namespace WpfApp7
                 }
             }
         }
+
+        /// <summary>
+        /// Создает новый файл в текущей директории после ввода имени и расширения пользователем.
+        /// </summary>
         private void CreateFile_Click(object sender, RoutedEventArgs e)
         {
-
             var dialog = new InputDialog("Введите имя файла с расширением (например: text.txt, doc.docx)");
             if (dialog.ShowDialog() == true)
             {
@@ -218,8 +248,6 @@ namespace WpfApp7
                         } // Создаем файл и сразу закрываем поток
 
                         LoadFiles(_currentPath);
-
-
                     }
                     else
                     {
@@ -232,6 +260,10 @@ namespace WpfApp7
                 }
             }
         }
+
+        /// <summary>
+        /// Переходит к предыдущей директории в истории навигации.
+        /// </summary>
         private void NavigateBack()
         {
             if (_back.Count > 0)
@@ -241,6 +273,10 @@ namespace WpfApp7
                 LoadFiles(previousPath, false);
             }
         }
+
+        /// <summary>
+        /// Переходит к следующей директории в истории навигации.
+        /// </summary>
         private void NavigateForward()
         {
             if (_forward.Count > 0)
@@ -250,14 +286,38 @@ namespace WpfApp7
                 LoadFiles(nextPath, false);
             }
         }
+
+        /// <summary>
+        /// Обработчик события нажатия кнопки "Назад". Осуществляет переход к предыдущей директории.
+        /// </summary>
         private void ButtonBack_Click(object sender, RoutedEventArgs e)
         {
-            NavigateBack();
+            var button = sender as Button;
+            if (button != null)
+            {
+                button.IsEnabled = false; // Disable the button
+                NavigateBack();
+                button.IsEnabled = true; // Re-enable the button
+            }
         }
+
+        /// <summary>
+        /// Обработчик события нажатия кнопки "Вперед". Осуществляет переход к следующей директории.
+        /// </summary>
         private void ButtonForward_Click(object sender, RoutedEventArgs e)
         {
-            NavigateForward();
+            var button = sender as Button;
+            if (button != null)
+            {
+                button.IsEnabled = false; // Disable the button
+                NavigateForward();
+                button.IsEnabled = true; // Re-enable the button
+            }
         }
+
+        /// <summary>
+        /// Загружает дерево папок в TreeView, добавляя доступные диски.
+        /// </summary>
         private void LoadFolderTreeView()
         {
             FolderTreeView.Items.Clear();
@@ -284,6 +344,10 @@ namespace WpfApp7
                 }
             }
         }
+
+        /// <summary>
+        /// Обработчик события разворачивания элемента в TreeView. Загружает подкаталоги выбранного элемента.
+        /// </summary>
         private void FolderTreeView_Expanded(object sender, RoutedEventArgs e)
         {
             var item = e.Source as TreeViewItem;
@@ -318,6 +382,10 @@ namespace WpfApp7
                 }
             }
         }
+
+        /// <summary>
+        /// Обработчик события изменения выбранного элемента в TreeView. Загружает файлы выбранной директории.
+        /// </summary>
         private void FolderTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (e.NewValue is TreeViewItem item && item.Tag is DirectoryInfo dir)
@@ -332,13 +400,21 @@ namespace WpfApp7
                 }
             }
         }
+
+        /// <summary>
+        /// Обработчик события двойного щелчка мыши по элементу в списке файлов. Открывает выбранный элемент.
+        /// </summary>
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton == MouseButton.Left)
             {
                 OpenSelectedItem();
             }
-        } 
+        }
+
+        /// <summary>
+        /// Обработчик события нажатия клавиши в списке файлов. Удаляет выбранный элемент при нажатии Delete.
+        /// </summary>
         private void FileListView_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Delete)
@@ -349,6 +425,10 @@ namespace WpfApp7
                     DeleteToRecycleBin();
             }
         }
+
+        /// <summary>
+        /// Удаляет выбранный элемент без возможности восстановления.
+        /// </summary>
         private void DeleteSelectedItem()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -387,6 +467,11 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при удалении: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Создает контекстное меню для списка файлов с различными действиями.
+        /// </summary>
+        /// <returns>Возвращает созданное контекстное меню.</returns>
         private ContextMenu CreateContextMenu()
         {
             var contextMenu = new ContextMenu();
@@ -424,6 +509,10 @@ namespace WpfApp7
             contextMenu.Items.Add(menuItemOpenInTerminal);
             return contextMenu;
         }
+
+        /// <summary>
+        /// Переименовывает выбранный элемент после ввода нового имени пользователем.
+        /// </summary>
         private void RenameSelectedItem()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -452,6 +541,10 @@ namespace WpfApp7
                 }
             }
         }
+
+        /// <summary>
+        /// Открывает командную строку в выбранной директории.
+        /// </summary>
         private void OpenInTerminal()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -471,35 +564,47 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при открытии терминала: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Копирует выбранный элемент в буфер обмена.
+        /// </summary>
         private void CopySelectedItem()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
             if (selected == null) return;
-    
+
             _clipboardPath = selected.FullName;
             _isCut = false;
         }
+
+        /// <summary>
+        /// Вырезает выбранный элемент для последующего перемещения.
+        /// </summary>
         private void CutSelectedItem()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
             if (selected == null) return;
-    
+
             _clipboardPath = selected.FullName;
             _isCut = true;
         }
+
+        /// <summary>
+        /// Вставляет элемент из буфера обмена в текущую директорию.
+        /// </summary>
         private void PasteItem()
         {
             if (string.IsNullOrEmpty(_clipboardPath)) return;
-    
+
             try
             {
                 string fileName = Path.GetFileName(_clipboardPath);
                 string destinationPath = Path.Combine(_currentPath, fileName);
-        
+
                 // Проверка существования целевого файла
                 if (File.Exists(destinationPath) || Directory.Exists(destinationPath))
                 {
-                    if (MessageBox.Show("Файл с таким именем уже существует. Заменить?", 
+                    if (MessageBox.Show("Файл с таким именем уже существует. Заменить?",
                             "Подтверждение", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
                         return;
                 }
@@ -518,10 +623,10 @@ namespace WpfApp7
                     else
                         CopyDirectory(_clipboardPath, destinationPath);
                 }
-        
+
                 if (_isCut)
                     _clipboardPath = null;
-        
+
                 LoadFiles(_currentPath);
             }
             catch (UnauthorizedAccessException)
@@ -537,22 +642,32 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при вставке: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// Рекурсивно копирует директорию и её содержимое в указанное место.
+        /// </summary>
+        /// <param name="sourcePath">Исходный путь директории.</param>
+        /// <param name="destinationPath">Целевой путь директории.</param>
         private void CopyDirectory(string sourcePath, string destinationPath)
         {
             Directory.CreateDirectory(destinationPath);
-    
+
             foreach (string file in Directory.GetFiles(sourcePath))
             {
                 string destFile = Path.Combine(destinationPath, Path.GetFileName(file));
                 File.Copy(file, destFile, true);
             }
-    
+
             foreach (string dir in Directory.GetDirectories(sourcePath))
             {
                 string destDir = Path.Combine(destinationPath, Path.GetFileName(dir));
                 CopyDirectory(dir, destDir);
             }
         }
+
+        /// <summary>
+        /// Перемещает выбранный элемент в корзину.
+        /// </summary>
         private void DeleteToRecycleBin()
         {
             var selected = FileListView.SelectedItem as FileSystemInfo;
@@ -571,15 +686,18 @@ namespace WpfApp7
                     ? $"Вы уверены, что хотите переместить папку '{selected.Name}' в корзину?"
                     : $"Вы уверены, что хотите переместить файл '{selected.Name}' в корзину?";
 
-                if (MessageBox.Show(message, "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (MessageBox.Show(message, "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) ==
+                    MessageBoxResult.Yes)
                 {
                     if (selected is DirectoryInfo dir)
                     {
-                        FileSystem.DeleteDirectory(dir.FullName, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                        FileSystem.DeleteDirectory(dir.FullName, UIOption.OnlyErrorDialogs,
+                            RecycleOption.SendToRecycleBin);
                     }
                     else
                     {
-                        FileSystem.DeleteFile(selected.FullName, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+                        FileSystem.DeleteFile(selected.FullName, UIOption.OnlyErrorDialogs,
+                            RecycleOption.SendToRecycleBin);
                     }
 
                     LoadFiles(_currentPath);
@@ -590,6 +708,5 @@ namespace WpfApp7
                 MessageBox.Show($"Ошибка при удалении в корзину: {ex.Message}");
             }
         }
-
     }
 }
