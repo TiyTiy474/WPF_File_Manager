@@ -82,7 +82,7 @@
         <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
             <Button Content="⟵" Click="ButtonBack_Click" Margin="0,0,5,0" Width="30" Height="30" Style="{StaticResource FancyButtonStyle}"/>
             <Button Content="⟶" Click="ButtonForward_Click" Width="30" Height="30" Margin="0,0,5,0" Style="{StaticResource FancyButtonStyle}"/>
-            <Button Content="Создать файл" Click="CreateFile_Click" Width="100" Height="30" Style="{StaticResource FancyButtonStyle}"/>
+            <Button Content="↑" Click ="ButtonUp_Click" Width="30" Height="30" Margin="0,0,5,0" Style="{StaticResource FancyButtonStyle}"/>
         </StackPanel>
 
         <!-- Путь -->
@@ -91,14 +91,7 @@
                  IsReadOnly="True" 
                  Margin="5"
                  Style="{StaticResource RoundedTextBoxStyle}"/>
-
-        <!-- Текущий файл -->
-        <TextBlock Text="Текущий файл:" Grid.Row="2" Grid.Column="0" Margin="5,5,0,5" VerticalAlignment="Center"/>
-        <TextBox x:Name="CurrentFileTextBox" Grid.Row="2" Grid.Column="1" 
-                 IsReadOnly="True" 
-                 Margin="5"
-                 Style="{StaticResource RoundedTextBoxStyle}"/>
-
+        
         <!-- Основной контент -->
         <TreeView x:Name="FolderTreeView" Grid.Row="3" Grid.Column="0" 
                   SelectedItemChanged="FolderTreeView_SelectedItemChanged"

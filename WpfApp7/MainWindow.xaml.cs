@@ -9,17 +9,19 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System;
 using System.Collections.ObjectModel;
-using System.IO; 
+using System.IO;
 using System.Diagnostics;
 using System.Windows.Controls.Primitives;
 using System.Collections.Generic;
-using Microsoft.VisualBasic.FileIO; // это для FileSystem и для работы с корзиной
+using Microsoft.VisualBasic.FileIO;
 using System.Globalization;
 using System.Runtime.InteropServices;
-//TODO:горячие клавиши ctrl+c,ctrl+v,ctrl+a,ctrl+shift+n
-//TODO:стрелка вверх то есть он возвращеает нас на директорию вверх 
-//TODO:доработать вырезание 
-
+// TODO: Реализовать сочетание клавиш Shift + Ctrl + N - попробовать (не обязательно) - работает
+// TODO: Завершить реализацию функций "шаг назад" и "шаг вперед" - готово 
+// TODO: Удалить папку Desktop из директории - готов 
+// TODO: Реализовать навигацию вверх, как в Проводнике Windows - готово
+// TODO: Обеспечить стабильность и поддерживаемость кода - самый последний шаг
+// TODO: Реализовать поддержание многоудаленности, а также чтобы можно было при копирование вставить все присутствующие файлы в папек или где либо 
 namespace WpfApp7
 {
     /// <summary>
@@ -27,30 +29,15 @@ namespace WpfApp7
     /// </summary>
     public partial class MainWindow : Window
     {
-        /// <summary>
-        /// Коллекция файлов и директорий в текущем пути.
-        /// </summary>
         private ObservableCollection<FileSystemInfo> _files;
-        /// <summary>
-        /// Текущий путь директории.
-        /// </summary>
         private string _currentPath;
-        /// <summary>
-        /// Стек для управления историей навигации назад.
-        /// </summary>
         private Stack<string> _back = new Stack<string>();
-        /// <summary>
-        /// Стек для управления историей навигации вперед.
-        /// </summary>
         private Stack<string> _forward = new Stack<string>();
-        /// <summary>
-        /// Путь элемента в буфере обмена.
-        /// </summary>
         private string _clipboardPath;
-        /// <summary>
-        /// Указывает, является ли операция в буфере обмена вырезанием.
-        /// </summary>
         private bool _isCut;
+        private HashSet<string> _cutItems = new HashSet<string>();
+        private List<string> _clipboardPaths = new List<string>();
+
         /// <summary>
         /// Инициализирует новый экземпляр класса MainWindow.
         /// </summary>
@@ -60,11 +47,10 @@ namespace WpfApp7
             _files = new ObservableCollection<FileSystemInfo>();
             FileListView.ItemsSource = _files;
             LoadFolderTreeView();
-            LoadFiles(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)); // Начальная директория
+            LoadFiles(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
             FileListView.ContextMenu = CreateContextMenu();
             this.KeyDown += MainWindow_KeyDown;
             this.Activated += (s, e) => FileListView.Focus();
-            
         }
 
         /// <summary>
@@ -84,8 +70,8 @@ namespace WpfApp7
                     return;
                 }
 
-                PathTextBox.Text = Path.GetDirectoryName(selected.FullName);
-                CurrentFileTextBox.Text = selected.Name;
+                // Изменяем эту строку, чтобы показывать полный путь
+                PathTextBox.Text = selected.FullName;
 
                 if (selected is DirectoryInfo)
                 {
@@ -119,7 +105,6 @@ namespace WpfApp7
             {
                 _currentPath = path;
                 PathTextBox.Text = path;
-                CurrentFileTextBox.Clear();
                 _files.Clear();
 
                 var dir = new DirectoryInfo(path);
@@ -127,12 +112,6 @@ namespace WpfApp7
                 {
                     MessageBox.Show("Указанная директория не существует");
                     return;
-                }
-
-                var parentDir = dir.Parent;
-                if (parentDir != null)
-                {
-                    _files.Add(parentDir);
                 }
 
                 foreach (var directory in dir.GetDirectories())
@@ -144,6 +123,7 @@ namespace WpfApp7
                 {
                     _files.Add(file);
                 }
+
 
                 // Обновляем внешний вид вырезанных элементов
                 foreach (var item in _files)
@@ -327,40 +307,75 @@ namespace WpfApp7
         }
 
         /// <summary>
+        /// возвращает на 1 директорию вверх 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ButtonUp_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button != null)
+            {
+                button.IsEnabled = false;
+
+                try
+                {
+                    DirectoryInfo parentDir = Directory.GetParent(_currentPath);
+                    if (parentDir != null)
+                    {
+                        _back.Push(_currentPath);
+                        LoadFiles(parentDir.FullName, false);
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    MessageBox.Show("Отказано в доступе к директории");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при переходе: {ex.Message}");
+                }
+
+                button.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
         /// Загружает дерево папок.
         /// </summary>
-        private void LoadFolderTreeView() 
-        { 
-            FolderTreeView.Items.Clear(); 
+        private void LoadFolderTreeView()
+        {
+            FolderTreeView.Items.Clear();
             // Добавляем диски
-             foreach (var drive in DriveInfo.GetDrives()) 
-             { 
-                 try 
-                 { 
-                     if (drive.IsReady) 
-                     { 
-                         var driveItem = new TreeViewItem 
-                         { 
-                             Header = $"{drive.Name} ({drive.VolumeLabel})", 
-                             Tag = drive.RootDirectory // Убедитесь, что Tag содержит DirectoryInfo
-                         }; 
-                         driveItem.Items.Add(new TreeViewItem()); 
-                         driveItem.Expanded += FolderTreeView_Expanded; 
-                         FolderTreeView.Items.Add(driveItem); 
-                     } 
-                 }
-                 catch (Exception ex) 
-                 { 
-                     MessageBox.Show($"Ошибка при загрузке диска {drive.Name}: {ex.Message}"); 
-                 } 
-             }
-             // Добавляем специальные папки
-             AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Рабочий стол"); 
-             AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Документы"); 
-             AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Изображения"); 
-             AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Музыка"); 
-             AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Видео"); 
-             AddSpecialFolder(GetDownloadsFolderPath(), "Загрузки");
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    if (drive.IsReady)
+                    {
+                        var driveItem = new TreeViewItem
+                        {
+                            Header = $"{drive.Name} ({drive.VolumeLabel})",
+                            Tag = drive.RootDirectory // Убедитесь, что Tag содержит DirectoryInfo
+                        };
+                        driveItem.Items.Add(new TreeViewItem());
+                        driveItem.Expanded += FolderTreeView_Expanded;
+                        FolderTreeView.Items.Add(driveItem);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при загрузке диска {drive.Name}: {ex.Message}");
+                }
+            }
+
+            // Добавляем специальные папки
+            AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Рабочий стол");
+            AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Документы");
+            AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Изображения");
+            AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Музыка");
+            AddSpecialFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Видео");
+            AddSpecialFolder(GetDownloadsFolderPath(), "Загрузки");
         }
 
         /// <summary>
@@ -437,13 +452,7 @@ namespace WpfApp7
         {
             if (e.Key == Key.Delete)
             {
-                var selected = FileListView.SelectedItem as FileSystemInfo;
-                if (selected == null) return;
-
-                if (Keyboard.Modifiers == ModifierKeys.Shift)
-                    DeleteSelectedItem();
-                else
-                    DeleteToRecycleBin(selected); // Передаем выбранный элемент
+                DeleteSelectedItems();
             }
         }
 
@@ -613,6 +622,7 @@ namespace WpfApp7
             contextMenu.Items.Add(new Separator());
             contextMenu.Items.Add(menuItemOpenInTerminal);
 
+
             return contextMenu;
         }
 
@@ -693,12 +703,8 @@ namespace WpfApp7
 
             _clipboardPath = selected.FullName;
             _isCut = true;
-
-            // Добавляем элемент в коллекцию вырезанных
             _cutItems.Add(_clipboardPath);
-
-            // Обновляем отображение
-            LoadFiles(_currentPath);
+            UpdateCutVisuals();
         }
 
         /// <summary>
@@ -712,7 +718,6 @@ namespace WpfApp7
             {
                 string fileName = Path.GetFileName(_clipboardPath);
                 string destinationPath = Path.Combine(_currentPath, fileName);
-
                 destinationPath = GetUniqueFilePath(destinationPath);
 
                 if (File.Exists(_clipboardPath))
@@ -732,24 +737,16 @@ namespace WpfApp7
 
                 if (_isCut)
                 {
-                    // Удаляем элемент из коллекции вырезанных
                     _cutItems.Remove(_clipboardPath);
                     _clipboardPath = null;
+                    _isCut = false;
                 }
 
                 LoadFiles(_currentPath);
             }
-            catch (UnauthorizedAccessException)
-            {
-                MessageBox.Show("Отказано в доступе. Проверьте права доступа к файлу или папке.");
-            }
-            catch (IOException ex)
-            {
-                MessageBox.Show($"Ошибка ввода/вывода: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при вставке: {ex.Message}");
+                MessageBox.Show($"Error during paste: {ex.Message}");
             }
         }
 
@@ -832,7 +829,7 @@ namespace WpfApp7
 
             return path;
         }
-        
+
         /// <summary>
         /// Добавляет специальную папку в дерево.
         /// </summary>
@@ -849,8 +846,8 @@ namespace WpfApp7
                 folderItem.Expanded += FolderTreeView_Expanded;
                 FolderTreeView.Items.Add(folderItem);
             }
-        } 
-        
+        }
+
         /// <summary>
         /// Получает путь к папке загрузок.
         /// </summary>
@@ -870,19 +867,31 @@ namespace WpfApp7
         }
 
         [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-        private static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags,
-            IntPtr hToken, out IntPtr ppszPath);
-        // Коллекция для хранения путей вырезанных элементов
-        private HashSet<string> _cutItems = new HashSet<string>();
-        //работа с горячими клавишами
+        private static extern int SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr ppszPath);
+
+        /// <summary>
+        /// Обрабатывает нажатие горячих клавиш.
+        /// </summary>
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)
         {
-            if (Keyboard.Modifiers == ModifierKeys.Control)
+            if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+            {
+                switch (e.Key)
+                {
+                    case Key.N:
+                        CreateFolder_Click(null, null);
+                        break;
+                }
+            }
+            else if (Keyboard.Modifiers == ModifierKeys.Control)
             {
                 switch (e.Key)
                 {
                     case Key.C:
                         CopySelectedItem();
+                        break;
+                    case Key.X:
+                        CutSelectedItem();
                         break;
                     case Key.V:
                         PasteItem();
@@ -890,32 +899,82 @@ namespace WpfApp7
                     case Key.A:
                         SelectAllItems();
                         break;
-                    case Key.N:
-                        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-                        {
-                            CreateFolder_Click(null, null);
-                        }
+                    case Key.Delete:
+                        DeleteSelectedItem();
                         break;
                 }
             }
-            else if (e.Key == Key.Up)
-            {
-                NavigateToParentDirectory();
-            }
         }
-    
+
+        /// <summary>
+        /// Выбирает все элементы в списке файлов.
+        /// </summary>
         private void SelectAllItems()
         {
             FileListView.SelectAll();
         }
 
-        private void NavigateToParentDirectory()
+        /// <summary>
+        /// Обновляет визуальное отображение вырезанных элементов.
+        /// </summary>
+        private void UpdateCutVisuals()
         {
-            var currentDir = new DirectoryInfo(_currentPath);
-            if (currentDir.Parent != null)
+            foreach (var item in _files)
             {
-                LoadFiles(currentDir.Parent.FullName);
+                var listViewItem = FileListView.ItemContainerGenerator.ContainerFromItem(item) as ListViewItem;
+                if (listViewItem != null)
+                {
+                    if (_cutItems.Contains(item.FullName))
+                    {
+                        listViewItem.Foreground = Brushes.Gray;
+                        listViewItem.FontStyle = FontStyles.Italic;
+                    }
+                    else
+                    {
+                        listViewItem.Foreground = Brushes.Black;
+                        listViewItem.FontStyle = FontStyles.Normal;
+                    }
+                }
             }
         }
+        
+        /// <summary>
+        /// добавление множественного удаления
+        /// </summary>
+        private void DeleteSelectedItems()
+        {
+            var selectedItems = FileListView.SelectedItems.Cast<FileSystemInfo>().ToList();
+            if (!selectedItems.Any()) return;
+
+            foreach (var selected in selectedItems)
+            {
+                try
+                {
+                    if (!selected.Exists)
+                    {
+                        MessageBox.Show($"Файл или папка '{selected.Name}' уже не существует.");
+                        continue;
+                    }
+
+                    if (selected is DirectoryInfo dir)
+                    {
+                        FileSystem.DeleteDirectory(dir.FullName, UIOption.OnlyErrorDialogs,
+                            RecycleOption.SendToRecycleBin);
+                    }
+                    else
+                    {
+                        FileSystem.DeleteFile(selected.FullName, UIOption.OnlyErrorDialogs,
+                            RecycleOption.SendToRecycleBin);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при удалении '{selected.Name}': {ex.Message}");
+                }
+            }
+
+            LoadFiles(_currentPath);
+        }
+        
     }
 }
