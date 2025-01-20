@@ -16,12 +16,6 @@ using System.Collections.Generic;
 using Microsoft.VisualBasic.FileIO;
 using System.Globalization;
 using System.Runtime.InteropServices;
-// TODO: Реализовать сочетание клавиш Shift + Ctrl + N - попробовать (не обязательно) - работает
-// TODO: Завершить реализацию функций "шаг назад" и "шаг вперед" - готово 
-// TODO: Удалить папку Desktop из директории - готов 
-// TODO: Реализовать навигацию вверх, как в Проводнике Windows - готово
-// TODO: Обеспечить стабильность и поддерживаемость кода - самый последний шаг
-// TODO: Реализовать поддержание многоудаленности, а также чтобы можно было при копирование вставить все присутствующие файлы в папек или где либо 
 namespace WpfApp7
 {
     /// <summary>
@@ -888,13 +882,13 @@ namespace WpfApp7
                 switch (e.Key)
                 {
                     case Key.C:
-                        CopySelectedItem();
+                        CopySelectedItems();
                         break;
                     case Key.X:
-                        CutSelectedItem();
+                        CutSelectedItems();
                         break;
                     case Key.V:
-                        PasteItem();
+                        PasteItems();
                         break;
                     case Key.A:
                         SelectAllItems();
@@ -975,6 +969,81 @@ namespace WpfApp7
 
             LoadFiles(_currentPath);
         }
+        // Обновленный метод для копирования нескольких элементов
+        private void CopySelectedItems()
+        {
+            var selectedItems = FileListView.SelectedItems.Cast<FileSystemInfo>().ToList();
+            if (!selectedItems.Any()) return;
+
+            _clipboardPaths = selectedItems.Select(item => item.FullName).ToList();
+            _isCut = false;
+        }
         
+        // Обновленный метод для вырезания нескольких элементов
+        private void CutSelectedItems()
+        {
+            var selectedItems = FileListView.SelectedItems.Cast<FileSystemInfo>().ToList();
+            if (!selectedItems.Any()) return;
+
+            _clipboardPaths = selectedItems.Select(item => item.FullName).ToList();
+            _isCut = true;
+
+            // Используем цикл для добавления элементов
+            foreach (var path in _clipboardPaths)
+            {
+                _cutItems.Add(path);
+            }
+
+            UpdateCutVisuals();
+        }
+        
+        // Обновленный метод для вставки нескольких элементов
+        private void PasteItems()
+        {
+            if (_clipboardPaths == null || !_clipboardPaths.Any()) return;
+
+            try
+            {
+                foreach (var path in _clipboardPaths)
+                {
+                    string fileName = Path.GetFileName(path);
+                    string destinationPath = Path.Combine(_currentPath, fileName);
+                    destinationPath = GetUniqueFilePath(destinationPath);
+
+                    if (File.Exists(path))
+                    {
+                        if (_isCut)
+                            File.Move(path, destinationPath);
+                        else
+                            File.Copy(path, destinationPath, true);
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        if (_isCut)
+                            Directory.Move(path, destinationPath);
+                        else
+                            CopyDirectory(path, destinationPath);
+                    }
+                }
+
+                if (_isCut)
+                {
+                    // Используем цикл для удаления элементов
+                    foreach (var path in _clipboardPaths)
+                    {
+                        _cutItems.Remove(path);
+                    }
+
+                    _clipboardPaths.Clear();
+                    _isCut = false;
+                }
+
+                LoadFiles(_currentPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during paste: {ex.Message}");
+            }
+        }
     }
 }
